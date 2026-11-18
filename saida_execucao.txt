@@ -1,0 +1,187 @@
+
+========================================================================
+ETAPA 1 - Diagnóstico e modelagem da situação atual
+========================================================================
+
+(a) Variáveis: N, S, L, O = nº de ônibus alocados em Norte, Sul, Leste e Oeste
+    (inteiros, não negativos).
+
+(b) Modelo (Relatório I):
+    N +  S +  L +  O = 72
+    N + 2S      +  O = 76
+         S + 2L      = 52
+    N      +  L + 2O = 76
+
+(c) Forma matricial A·x = b:
+A =
+  [  1   1   1   1 ]
+  [  1   2   0   1 ]
+  [  0   1   2   0 ]
+  [  1   0   1   2 ]
+x = [N, S, L, O]^T
+b = [72, 76, 52, 76]^T
+
+(d) Existência e unicidade da solução:
+    det(A) = 3  (cálculo exato)   | numpy: 3.0000
+    posto(A) = 4, posto([A|b]) = 4, nº de incógnitas = 4
+    Pelo Teorema de Rouché-Capelli: posto(A) = posto([A|b]) = 4 = nº de incógnitas,
+    então o sistema é possível e determinado (SPD): existe UMA única distribuição.
+    Equivalente: det(A) != 0, logo A é invertível e x = A^-1 · b.
+
+(e) Resolução por eliminação de Gauss-Jordan:
+
+Matriz aumentada inicial [A | b]:
+  [      1       1       1       1      72 ]
+  [      1       2       0       1      76 ]
+  [      0       1       2       0      52 ]
+  [      1       0       1       2      76 ]
+
+L2 <- L2 - 1*L1:
+  [      1       1       1       1      72 ]
+  [      0       1      -1       0       4 ]
+  [      0       1       2       0      52 ]
+  [      1       0       1       2      76 ]
+
+L4 <- L4 - 1*L1:
+  [      1       1       1       1      72 ]
+  [      0       1      -1       0       4 ]
+  [      0       1       2       0      52 ]
+  [      0      -1       0       1       4 ]
+
+L1 <- L1 - 1*L2:
+  [      1       0       2       1      68 ]
+  [      0       1      -1       0       4 ]
+  [      0       1       2       0      52 ]
+  [      0      -1       0       1       4 ]
+
+L3 <- L3 - 1*L2:
+  [      1       0       2       1      68 ]
+  [      0       1      -1       0       4 ]
+  [      0       0       3       0      48 ]
+  [      0      -1       0       1       4 ]
+
+L4 <- L4 + 1*L2:
+  [      1       0       2       1      68 ]
+  [      0       1      -1       0       4 ]
+  [      0       0       3       0      48 ]
+  [      0       0      -1       1       8 ]
+
+L3 <- L3 / 3:
+  [      1       0       2       1      68 ]
+  [      0       1      -1       0       4 ]
+  [      0       0       1       0      16 ]
+  [      0       0      -1       1       8 ]
+
+L1 <- L1 - 2*L3:
+  [      1       0       0       1      36 ]
+  [      0       1      -1       0       4 ]
+  [      0       0       1       0      16 ]
+  [      0       0      -1       1       8 ]
+
+L2 <- L2 + 1*L3:
+  [      1       0       0       1      36 ]
+  [      0       1       0       0      20 ]
+  [      0       0       1       0      16 ]
+  [      0       0      -1       1       8 ]
+
+L4 <- L4 + 1*L3:
+  [      1       0       0       1      36 ]
+  [      0       1       0       0      20 ]
+  [      0       0       1       0      16 ]
+  [      0       0       0       1      24 ]
+
+L1 <- L1 - 1*L4:
+  [      1       0       0       0      12 ]
+  [      0       1       0       0      20 ]
+  [      0       0       1       0      16 ]
+  [      0       0       0       1      24 ]
+
+Solução (Gauss-Jordan, frações exatas):
+    Norte  = 12 ônibus
+    Sul    = 20 ônibus
+    Leste  = 16 ônibus
+    Oeste  = 24 ônibus
+
+Conferência numpy.linalg.solve: [12. 20. 16. 24.]
+Conferência x = A^-1·b:         [12. 20. 16. 24.]
+
+(f) Verificação de todos os registros operacionais:
+    Frota total               :   72 = 72   -> OK
+    Norte + Oeste + 2*Sul     :   76 = 76   -> OK
+    Sul + 2*Leste             :   52 = 52   -> OK
+    Norte + Leste + 2*Oeste   :   76 = 76   -> OK
+    Valores inteiros e não negativos: OK
+
+========================================================================
+ETAPA 2 - Política de redistribuição
+========================================================================
+
+(a) Ônibus necessários = teto(passageiros / capacidade):
+    Região   Pass.  Cap.  Necess.
+    Norte      560    40       14
+    Sul        760    40       19
+    Leste      720    40       18
+    Oeste      840    40       21
+    Total necessário = 72 = frota disponível (72)
+
+(b) Desequilíbrios (atual - necessário) e taxa de ocupação no pico:
+    Região   Atual  Necess.  Saldo  Ocupação
+    Norte       12       14     -2    116,7%  déficit
+    Sul         20       19     +1     95,0%  excedente
+    Leste       16       18     -2    112,5%  déficit
+    Oeste       24       21     +3     87,5%  excedente
+    Passageiros sem vaga na distribuição atual: 160
+
+(c) Política proposta - transferências de custo mínimo:
+    Critérios: (1) cobrir 100% da demanda de cada região; (2) só quem tem excedente cede;
+    (3) mover o menor número possível de ônibus; (4) preferir regiões vizinhas
+    (custo 1 vizinha, 2 oposta). Ótimo encontrado por busca exaustiva.
+    Sul    -> Leste : 1 ônibus (vizinha)
+    Oeste  -> Norte : 2 ônibus (vizinha)
+    Oeste  -> Leste : 1 ônibus (oposta)
+    Ônibus deslocados: 4 | custo total ponderado: 5
+
+(d)/(e) Transformação linear T: R^4 -> R^4, T(x) = M·x, com
+M =
+  [     1      0      0   1/12 ]
+  [     0  19/20      0      0 ]
+  [     0   1/20      1   1/24 ]
+  [     0      0      0    7/8 ]
+    Coluna j = como a frota da região j é repartida; M[i][j] = fração que vai de j para i;
+    diagonal = fração que permanece na própria região.
+    M em decimais:
+    [ 1.0000  0.0000  0.0000  0.0833 ]
+    [ 0.0000  0.9500  0.0000  0.0000 ]
+    [ 0.0000  0.0500  1.0000  0.0417 ]
+    [ 0.0000  0.0000  0.0000  0.8750 ]
+
+(f) Propriedades:
+    Soma de cada coluna de M: ['1', '1', '1', '1']  =>  1^T·M = 1^T
+    Logo, para qualquer x: soma(T(x)) = 1^T·(M·x) = (1^T·M)·x = 1^T·x = soma(x).
+    Todos os coeficientes M[i][j] >= 0: True
+    Logo, para qualquer x >= 0: T(x)_i = soma_j M[i][j]·x_j >= 0 (soma de termos >= 0).
+    det(M) = 133/160 != 0 -> T é invertível (a política pode ser desfeita).
+
+Resultado: T(x_atual) = ['14', '19', '18', '21']
+    Total antes = 72, total depois = 72
+
+========================================================================
+AVALIAÇÃO DOS RESULTADOS
+========================================================================
+    Região   Antes  Depois  Ocup. antes  Ocup. depois
+    Norte       12      14       116,7%        100,0%
+    Sul         20      19        95,0%        100,0%
+    Leste       16      18       112,5%        100,0%
+    Oeste       24      21        87,5%        100,0%
+
+    Passageiros sem vaga: 160 -> 0
+    Vagas ociosas:        160 -> 0
+    Ônibus redistribuídos: 4 de 72 (5,6% da frota)
+
+    Teste de robustez - aplicando a mesma política a outras frotas (arredondamento
+    pelo maior resto para manter números inteiros):
+    x = [10, 22, 16, 24] (total 72) -> T(x) = [12.00, 20.90, 18.10, 21.00] -> inteiro [12, 21, 18, 21] (total 72)
+    x = [18, 18, 18, 18] (total 72) -> T(x) = [19.50, 17.10, 19.65, 15.75] -> inteiro [19, 17, 20, 16] (total 72)
+    x = [0, 30, 12, 30] (total 72) -> T(x) = [2.50, 28.50, 14.75, 26.25] -> inteiro [3, 28, 15, 26] (total 72)
+
+Todas as verificações passaram.
